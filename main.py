@@ -255,14 +255,21 @@ def _save_auth_users(users: dict):
 
 def _create_default_admin():
     users = _load_auth_users()
-    if users:
-        return
     admin_user = os.environ.get("ADMIN_USER", "")
     admin_pass = os.environ.get("ADMIN_PASSWORD", "")
     if not admin_user or not admin_pass:
-        print("[AUTH] 未设置 ADMIN_USER/ADMIN_PASSWORD 环境变量，认证已启用但无管理员账号。")
-        print("[AUTH] 请设置环境变量后重启，或手动创建 data/auth_users.json。")
+        if not users:
+            print("[AUTH] 未设置 ADMIN_USER/ADMIN_PASSWORD 环境变量，认证已启用但无管理员账号。")
+            print("[AUTH] 请设置环境变量后重启，或手动创建 data/auth_users.json。")
         return
+    # 管理员已存在时，如果密码不同则更新密码
+    if admin_user in users:
+        if not _verify_password(admin_pass, users[admin_user]["password_hash"]):
+            users[admin_user]["password_hash"] = pwd_context.hash(admin_pass)
+            _save_auth_users(users)
+            print(f"[AUTH] 已更新管理员密码: {admin_user}")
+        return
+    # 管理员不存在，创建新账号
     users[admin_user] = {
         "username": admin_user,
         "password_hash": pwd_context.hash(admin_pass),
