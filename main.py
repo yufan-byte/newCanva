@@ -37,7 +37,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response, StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
-from passlib.context import CryptContext
+import bcrypt
 from jose import jwt, JWTError
 from fastapi import Depends
 from fastapi.responses import RedirectResponse
@@ -222,7 +222,12 @@ JWT_SECRET = os.environ.get("JWT_SECRET", "") or hashlib.sha256(
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 24
 AUTH_USERS_FILE = os.path.join("data", "auth_users.json")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt 密码工具函数
+def _hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+def _verify_password(plain: str, hashed: str) -> bool:
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 # 不需要认证的路径白名单
 AUTH_WHITELIST_PREFIXES = (
@@ -265,23 +270,19 @@ def _create_default_admin():
     # 管理员已存在时，如果密码不同则更新密码
     if admin_user in users:
         if not _verify_password(admin_pass, users[admin_user]["password_hash"]):
-            users[admin_user]["password_hash"] = pwd_context.hash(admin_pass)
+            users[admin_user]["password_hash"] = _hash_password(admin_pass)
             _save_auth_users(users)
             print(f"[AUTH] 已更新管理员密码: {admin_user}")
         return
     # 管理员不存在，创建新账号
     users[admin_user] = {
         "username": admin_user,
-        "password_hash": pwd_context.hash(admin_pass),
+        "password_hash": _hash_password(admin_pass),
         "role": "admin",
         "created_at": int(time.time() * 1000),
     }
     _save_auth_users(users)
     print(f"[AUTH] 已创建默认管理员账号: {admin_user}")
-
-
-def _verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
 
 
 def _create_access_token(username: str, role: str) -> str:
@@ -422,7 +423,7 @@ async def auth_create_user(req: CreateUserRequest, request: Request):
         raise HTTPException(status_code=409, detail="用户名已存在")
     users[req.username] = {
         "username": req.username,
-        "password_hash": pwd_context.hash(req.password),
+        "password_hash": _hash_password(req.password),
         "role": "user",
         "created_at": int(time.time() * 1000),
     }
