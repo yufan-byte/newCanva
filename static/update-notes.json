@@ -1,0 +1,30 @@
+{
+  "version": "2026.06.17",
+  "updated_at": "2026-06-17T23:50:00+08:00",
+  "items": [
+    {
+      "type": "improve",
+      "text": "智能画布尺寸/比例选择窗口重构"
+    },
+    {
+      "type": "improve",
+      "text": "日志缩略图改用轻量预览，提示词与报错均可点击复制"
+    },
+    {
+      "type": "improve",
+      "text": "修复 ComfyUI/API 生成偶发卡住、画布拿不到图片"
+    },
+    {
+      "type": "improve",
+      "text": "修复部分 OpenAI 站点被误判为方舟协议"
+    },
+    {
+      "type": "improve",
+      "text": "大幅优化画布拖动、输入与素材库滚动流畅度"
+    },
+    {
+      "type": "improve",
+      "text": "优化音频卡片、多图排序和资产预览"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    container_name: infinite-canvas
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - DATA_ROOT=/app/data_root
+    volumes:
+      - app_data:/app/data_root
+    ports:
+      - "3000:3000"
+
+volumes:
+  app_data:
