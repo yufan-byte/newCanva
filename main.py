@@ -37,6 +37,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response, StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
+from passlib.context import CryptContext
+from jose import jwt, JWTError
+from fastapi import Depends
+from fastapi.responses import RedirectResponse
 
 QUIET_ACCESS_PATHS = {
     "/api/queue_status",
@@ -73,6 +77,40 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """认证中间件：未登录用户只能访问白名单路径。"""
+    if not AUTH_ENABLED:
+        return await call_next(request)
+
+    path = request.url.path
+
+    # 白名单路径直接放行
+    for prefix in AUTH_WHITELIST_PREFIXES:
+        if path == prefix or path.startswith(prefix):
+            return await call_next(request)
+
+    # 校验 JWT Cookie
+    user = _get_current_user(request)
+
+    # API 请求：未认证返回 401 JSON
+    if path.startswith("/api/"):
+        if not user:
+            return JSONResponse({"detail": "未认证"}, status_code=401)
+        # 将用户信息挂到 request.state 供后续端点使用
+        request.state.user = user
+        return await call_next(request)
+
+    # 非 API 请求：未认证则重定向到登录页
+    if not user:
+        return RedirectResponse(url="/static/login.html", status_code=302)
+
+    # 已认证：放行
+    request.state.user = user
+    return await call_next(request)
+
 
 # --- WebSocket 状态管理器 ---
 class ConnectionManager:
@@ -176,10 +214,102 @@ MODELSCOPE_VERSION_URL = MODELSCOPE_FILE_API_ROOT + "VERSION"
 MODELSCOPE_UPDATE_NOTES_URL = MODELSCOPE_FILE_API_ROOT + "static/update-notes.json"
 MODELSCOPE_TREE_URL = "https://www.modelscope.ai/api/v1/studio/daniel8152/Infinite-Canvas/repo/files?Revision=master&Recursive=true"
 
+# --- 认证配置 ---
+AUTH_ENABLED = os.environ.get("AUTH_ENABLED", "true").lower() in ("true", "1", "yes")
+JWT_SECRET = os.environ.get("JWT_SECRET", "") or hashlib.sha256(
+    (os.environ.get("ADMIN_USER", "admin") + ":" + os.environ.get("ADMIN_PASSWORD", "")).encode()
+).hexdigest()
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_HOURS = 24
+AUTH_USERS_FILE = os.path.join("data", "auth_users.json")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# 不需要认证的路径白名单
+AUTH_WHITELIST_PREFIXES = (
+    "/login.html",
+    "/static/login.html",
+    "/static/css/login.css",
+    "/static/js/login.js",
+    "/static/vendor/",
+    "/api/auth/login",
+    "/favicon.ico",
+)
+
+
+# --- 认证工具函数 ---
+def _load_auth_users():
+    if not os.path.exists(AUTH_USERS_FILE):
+        return {}
+    try:
+        with open(AUTH_USERS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_auth_users(users: dict):
+    os.makedirs(os.path.dirname(AUTH_USERS_FILE), exist_ok=True)
+    with open(AUTH_USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(users, f, ensure_ascii=False, indent=2)
+
+
+def _create_default_admin():
+    users = _load_auth_users()
+    if users:
+        return
+    admin_user = os.environ.get("ADMIN_USER", "")
+    admin_pass = os.environ.get("ADMIN_PASSWORD", "")
+    if not admin_user or not admin_pass:
+        print("[AUTH] 未设置 ADMIN_USER/ADMIN_PASSWORD 环境变量，认证已启用但无管理员账号。")
+        print("[AUTH] 请设置环境变量后重启，或手动创建 data/auth_users.json。")
+        return
+    users[admin_user] = {
+        "username": admin_user,
+        "password_hash": pwd_context.hash(admin_pass),
+        "role": "admin",
+        "created_at": int(time.time() * 1000),
+    }
+    _save_auth_users(users)
+    print(f"[AUTH] 已创建默认管理员账号: {admin_user}")
+
+
+def _verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
+
+
+def _create_access_token(username: str, role: str) -> str:
+    expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=JWT_EXPIRE_HOURS)
+    payload = {"sub": username, "role": role, "exp": expire}
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def _get_current_user(request: Request) -> Optional[dict]:
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            return None
+        users = _load_auth_users()
+        return users.get(username)
+    except JWTError:
+        return None
+
+
 @app.on_event("startup")
 async def startup_event():
     global GLOBAL_LOOP
     GLOBAL_LOOP = asyncio.get_running_loop()
+    # 初始化认证：创建默认管理员账号
+    if AUTH_ENABLED:
+        try:
+            await asyncio.to_thread(_create_default_admin)
+        except Exception as exc:
+            print(f"[AUTH] 初始化管理员账号失败: {exc}")
+    else:
+        print("[AUTH] 认证已禁用（AUTH_ENABLED=false），所有请求无需登录。")
     sync_static_html_versions()
     # 启动时整理资产库：给所有图片分组（含默认角色/场景）建好文件夹，并把根目录里的旧素材归整进去。
     try:
@@ -210,6 +340,103 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str = None):
     except Exception as e:
         print(f"WS Error: {e}")
         await manager.disconnect(websocket, client_id)
+
+
+# --- 认证 API ---
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class CreateUserRequest(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/api/auth/login")
+async def auth_login(req: LoginRequest):
+    users = _load_auth_users()
+    user = users.get(req.username)
+    if not user or not _verify_password(req.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+    token = _create_access_token(user["username"], user["role"])
+    response = JSONResponse({
+        "username": user["username"],
+        "role": user["role"],
+    })
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        max_age=JWT_EXPIRE_HOURS * 3600,
+    )
+    return response
+
+
+@app.post("/api/auth/logout")
+async def auth_logout():
+    response = JSONResponse({"ok": True})
+    response.delete_cookie("access_token")
+    return response
+
+
+@app.get("/api/auth/me")
+async def auth_me(request: Request):
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=401, detail="未认证")
+    return {"username": user["username"], "role": user["role"]}
+
+
+@app.get("/api/auth/users")
+async def auth_list_users(request: Request):
+    user = getattr(request.state, "user", None)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="仅管理员可操作")
+    users = _load_auth_users()
+    return [
+        {"username": u["username"], "role": u["role"], "created_at": u.get("created_at", 0)}
+        for u in users.values()
+    ]
+
+
+@app.post("/api/auth/users")
+async def auth_create_user(req: CreateUserRequest, request: Request):
+    user = getattr(request.state, "user", None)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="仅管理员可操作")
+    if len(req.username) < 2 or len(req.username) > 32:
+        raise HTTPException(status_code=400, detail="用户名长度需 2-32 个字符")
+    if len(req.password) < 6:
+        raise HTTPException(status_code=400, detail="密码长度至少 6 个字符")
+    users = _load_auth_users()
+    if req.username in users:
+        raise HTTPException(status_code=409, detail="用户名已存在")
+    users[req.username] = {
+        "username": req.username,
+        "password_hash": pwd_context.hash(req.password),
+        "role": "user",
+        "created_at": int(time.time() * 1000),
+    }
+    _save_auth_users(users)
+    return {"username": req.username, "role": "user"}
+
+
+@app.delete("/api/auth/users/{username}")
+async def auth_delete_user(username: str, request: Request):
+    user = getattr(request.state, "user", None)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="仅管理员可操作")
+    if username == user["username"]:
+        raise HTTPException(status_code=400, detail="不能删除自己的账号")
+    users = _load_auth_users()
+    if username not in users:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    del users[username]
+    _save_auth_users(users)
+    return {"ok": True}
+
 
 # --- 配置区域 ---
 

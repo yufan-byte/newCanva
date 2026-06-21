@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 - AI Studio</title>
+<script>
+(function(){
+  try{
+    var t=localStorage.getItem('studio_theme');
+    if(t==='dark'){
+      document.documentElement.classList.add('theme-dark','studio-theme-dark');
+      document.body && document.body.classList.add('theme-dark');
+    }
+  }catch(e){}
+})();
+</script>
+<script src="/static/vendor/js/tailwindcss-cdn.js?v=2026.06.17.1781693043"></script>
+<script src="/static/vendor/js/lucide.js?v=2026.06.17.1781693043"></script>
+<script src="/static/vendor/js/theme.js?v=2026.06.17"></script>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --card-bg: #ffffff;
+    --text: #1d1d1f;
+    --text-secondary: #6e6e73;
+    --border: #d2d2d7;
+    --input-bg: #f5f5f7;
+    --input-focus: #e8e8ed;
+    --accent: #0071e3;
+    --accent-hover: #0077ed;
+    --error: #ff3b30;
+    --error-bg: #fff2f1;
+  }
+  html.theme-dark, html.studio-theme-dark {
+    --bg: #1c1c1e;
+    --card-bg: #2c2c2e;
+    --text: #f5f5f7;
+    --text-secondary: #98989d;
+    --border: #3a3a3c;
+    --input-bg: #1c1c1e;
+    --input-focus: #3a3a3c;
+    --accent: #0a84ff;
+    --accent-hover: #409cff;
+    --error: #ff453a;
+    --error-bg: #3c1c1c;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s, color 0.3s;
+  }
+  .login-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    width: 100%;
+    max-width: 400px;
+    padding: 40px 36px;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .input-field {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 15px;
+    color: var(--text);
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .input-field:focus {
+    border-color: var(--accent);
+    background: var(--input-focus);
+  }
+  .input-field::placeholder {
+    color: var(--text-secondary);
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+    width: 100%;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-primary:hover {
+    background: var(--accent-hover);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .error-msg {
+    background: var(--error-bg);
+    color: var(--error);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    display: none;
+  }
+  .error-msg.show {
+    display: block;
+  }
+  .theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .theme-toggle:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+</style>
+</head>
+<body>
+<button class="theme-toggle" onclick="toggleLoginTheme()" title="切换主题">
+  <i data-lucide="moon" class="w-4 h-4" id="theme-icon-dark"></i>
+  <i data-lucide="sun" class="w-4 h-4" id="theme-icon-light" style="display:none"></i>
+</button>
+
+<div class="login-card">
+  <!-- Logo -->
+  <div style="text-align:center; margin-bottom: 28px;">
+    <div style="display:inline-flex; align-items:center; gap:10px;">
+      <div style="width:36px; height:36px; background:var(--accent); border-radius:10px; display:flex; align-items:center; justify-content:center;">
+        <i data-lucide="sparkles" class="w-5 h-5" style="color:#fff"></i>
+      </div>
+      <span style="font-size:22px; font-weight:700;">AI Studio</span>
+    </div>
+    <p style="color:var(--text-secondary); font-size:14px; margin-top:8px;">请登录以继续使用</p>
+  </div>
+
+  <!-- Error message -->
+  <div class="error-msg" id="error-msg"></div>
+
+  <!-- Login form -->
+  <form id="login-form" style="display:flex; flex-direction:column; gap:14px; margin-top:16px;">
+    <div>
+      <label style="font-size:13px; color:var(--text-secondary); margin-bottom:6px; display:block;">用户名</label>
+      <input type="text" id="username" class="input-field" placeholder="请输入用户名" autocomplete="username" required>
+    </div>
+    <div>
+      <label style="font-size:13px; color:var(--text-secondary); margin-bottom:6px; display:block;">密码</label>
+      <input type="password" id="password" class="input-field" placeholder="请输入密码" autocomplete="current-password" required>
+    </div>
+    <button type="submit" class="btn-primary" id="login-btn">登 录</button>
+  </form>
+</div>
+
+<script>
+  // Theme
+  function isLoginDark() {
+    return document.documentElement.classList.contains('theme-dark') ||
+           document.documentElement.classList.contains('studio-theme-dark');
+  }
+  function updateThemeIcons() {
+    var dark = isLoginDark();
+    document.getElementById('theme-icon-dark').style.display = dark ? 'none' : 'block';
+    document.getElementById('theme-icon-light').style.display = dark ? 'block' : 'none';
+  }
+  function toggleLoginTheme() {
+    var html = document.documentElement;
+    var dark = !isLoginDark();
+    html.classList.toggle('theme-dark', dark);
+    html.classList.toggle('studio-theme-dark', dark);
+    try { localStorage.setItem('studio_theme', dark ? 'dark' : 'light'); } catch(e) {}
+    updateThemeIcons();
+  }
+
+  // Init
+  document.addEventListener('DOMContentLoaded', function() {
+    lucide.createIcons();
+    updateThemeIcons();
+
+    // If already logged in, redirect to main app
+    fetch('/api/auth/me').then(function(r) {
+      if (r.ok) window.location.href = '/';
+    }).catch(function() {});
+  });
+
+  // Login
+  document.getElementById('login-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('login-btn');
+    var errEl = document.getElementById('error-msg');
+    var username = document.getElementById('username').value.trim();
+    var password = document.getElementById('password').value;
+
+    if (!username || !password) {
+      errEl.textContent = '请输入用户名和密码';
+      errEl.classList.add('show');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '登录中...';
+    errEl.classList.remove('show');
+
+    try {
+      var res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password }),
+      });
+      if (res.ok) {
+        window.location.href = '/';
+      } else {
+        var data = await res.json().catch(function() { return {}; });
+        errEl.textContent = data.detail || '登录失败';
+        errEl.classList.add('show');
+      }
+    } catch (err) {
+      errEl.textContent = '网络错误，请稍后重试';
+      errEl.classList.add('show');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '登 录';
+    }
+  });
+
+  // Enter key
+  document.getElementById('password').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('login-form').dispatchEvent(new Event('submit'));
+  });
+</script>
+</body>
+</html>

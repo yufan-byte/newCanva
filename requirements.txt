@@ -5,3 +5,5 @@ pydantic
 python-multipart
 httpx
 pillow
+python-jose[cryptography]
+passlib[bcrypt]
