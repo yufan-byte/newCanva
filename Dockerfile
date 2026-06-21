@@ -22,8 +22,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 复制应用代码
 COPY main.py .
+COPY VERSION .
 COPY static/ static/
 COPY workflows/ workflows/
+
+# 创建数据目录
+RUN mkdir -p /app/data
 
 EXPOSE 3000
 

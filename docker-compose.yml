@@ -6,6 +6,10 @@ services:
     environment:
       - PORT=3000
       - DATA_ROOT=/app/data_root
+      # 认证配置 - 请修改为你自己的密码
+      - AUTH_ENABLED=true
+      - ADMIN_USER=admin
+      - ADMIN_PASSWORD=Yufan2121@qq.com
     volumes:
       - app_data:/app/data_root
     ports:
