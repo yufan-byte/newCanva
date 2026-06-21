@@ -183,5 +183,4 @@ Commercial use is prohibited.
 
 ## 联系方式
 
-- B站：https://space.bilibili.com/78652351
 - GitHub：https://github.com/yufan-byte/newCanva
