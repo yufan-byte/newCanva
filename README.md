@@ -1,71 +1,187 @@
-# Infinite-Canvas
-Supports comfyui/API calls/modelscope calls
+# Infinite Canvas - 豫帆智能科技
 
+AI 多模态创作工作站 | 支持 ComfyUI / API / ModelScope
 
-详细教程：[https://youtu.be/1y9ShTvgC_w](https://youtu.be/r_y_9ALr7fg)
+---
 
-由于最近很多API网址关停，我找到一个稳定的网址：
+## 功能概览
 
-https://apimart.ai/register?aff=1uyAbb  （包含所有生图模型/视频模型/LLM模型）
+### 🎨 AI 图像生成
+- 支持几乎所有 OpenAI 协议的 API / 异步协议 / Gemini 协议 / 方舟协议
+- RunningHub 工作流 / AI 应用 / 收费模型调用
+- 火山引擎调用
+- ModelScope 免费 LLM 模型和图像模型调用
+- 即梦 CLI 调用（文生图 / 图生图 / 文生视频 / 图生视频）
+- 支持调用本地局域网的 ComfyUI
 
-https://www.fhl.mom/register?aff=86L574B4T2N9  （包含codex和GPT image 2模型）
+### 🖼️ 图像处理
+- 图片扩展 / 细节增强
+- 360° 全景图预览截图
+- 视频帧抽取
+- 循环节点等高级功能
 
-功能请求/功能更新/视频教程/联系我，都可以在B站评论或私信：https://space.bilibili.com/78652351
+### 💬 AI 对话
+- 多模型 Chat 对话
+- Agent 智能体模式
+- 图片理解与生成
 
-----
+### 📦 素材管理
+- 素材库分类管理
+- Chrome 批量采集插件
+- Photoshop 直连画布插件
 
-【新增了version文件，我每次更新都会更新version的版本号，如果你下载version文件，打开项目后，导航栏的GitHub按键就会提示新版本，如果不想查看更新提示，就删除version文件】
+### 🔒 权限认证
+- JWT + HTTP-only Cookie 安全认证
+- 管理员账号管理（添加 / 删除用户）
+- 环境变量配置初始管理员
+- 支持一键关闭认证（开发调试）
 
-【A version file has been added. I update the version number with each update. If you download the version file, the GitHub button in the navigation bar will indicate the new version after opening the project. If you don't want to see update notifications, delete the version file.】
+### 🔄 一键更新
+- 自动检测 GitHub / ModelScope 新版本
+- 一键更新 + 自动重启
+- 更新前自动备份，支持回滚
 
-----
+### 🎯 无限画布
+- 自由拖拽、缩放的无限画布
+- 多图层管理
+- 实时协作
 
-支持的功能：
-1. 支持几乎所有OpenAI协议的API/异步协议/Gemini协议/方舟协议
-2. RunningHub的工作流/AI应用/收费模型调用
-3. 火山引擎调用（人脸认证还在修复bug）
-4. Modelscope免费LLM模型和图像模型调用
-5. 即梦CLI调用，可直接调用即梦高级会员的积分，支持文生图/图生图/文生视频/图生视频
-6. 支持调用本地局域网的ComfyUI
-7. 扩展图片/360全景图预览截图/视频帧抽取/循环节点等诸多功能
-8. tools文件夹中，增加了chrome批量采集到素材库的插件，PS直连画布调用所有功能的插件
+---
 
---------
+## 快速开始
 
-已经申请著作权，禁止商业用途
+### 环境要求
+
+- Python 3.10+
+- pip
+
+### 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+### 启动服务
+
+```bash
+# 带认证启动（推荐）
+AUTH_ENABLED=true ADMIN_USER=admin ADMIN_PASSWORD=你的密码 python main.py
+
+# 关闭认证（开发调试）
+AUTH_ENABLED=false python main.py
+```
+
+启动后访问 http://localhost:3000
+
+### 环境变量说明
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `PORT` | `3000` | 服务端口 |
+| `AUTH_ENABLED` | `true` | 是否启用登录认证 |
+| `ADMIN_USER` | - | 初始管理员用户名（首次启动时创建） |
+| `ADMIN_PASSWORD` | - | 初始管理员密码 |
+| `JWT_SECRET` | 自动生成 | JWT 签名密钥，生产环境建议固定设置 |
+| `DATA_ROOT` | 程序目录 | 数据存储根目录 |
+
+---
+
+## Docker 部署
+
+```bash
+docker-compose up -d
+```
+
+Docker 部署时，通过环境变量配置管理员账号：
+
+```yaml
+# docker-compose.yml
+services:
+  app:
+    build: .
+    environment:
+      - PORT=3000
+      - AUTH_ENABLED=true
+      - ADMIN_USER=admin
+      - ADMIN_PASSWORD=your-secure-password
+```
+
+---
+
+## API 配置
+
+启动后在界面左下角「API 设置」中配置：
+
+- **OpenAI 兼容 API**：支持大部分第三方 API 服务
+- **ComfyUI**：本地或远程 ComfyUI 实例
+- **RunningHub**：云端 ComfyUI 工作流
+- **ModelScope**：免费模型调用
+- **即梦**：字节跳动 AI 图像/视频生成
+
+---
+
+## 项目结构
+
+```
+├── main.py                 # 后端服务（FastAPI）
+├── requirements.txt        # Python 依赖
+├── VERSION                 # 版本号
+├── Dockerfile              # Docker 构建文件
+├── docker-compose.yml      # Docker Compose 配置
+├── static/                 # 前端资源
+│   ├── index.html          # 主页面
+│   ├── login.html          # 登录页
+│   ├── admin.html          # 账号管理页
+│   ├── canvas.html         # 无限画布
+│   ├── gpt-chat.html       # AI 对话
+│   ├── zimage.html         # 文生图
+│   ├── js/                 # JavaScript
+│   └── vendor/             # 第三方库
+├── workflows/              # ComfyUI 工作流
+├── data/                   # 运行时数据（自动生成）
+└── tools/                  # 辅助工具
+    ├── chrome-local-asset-importer/  # Chrome 素材采集插件
+    └── photoshop-asset-connector/    # Photoshop 插件
+```
+
+---
+
+## 更新日志
+
+### v2026.06.22
+- ✨ 新增 JWT + Cookie 登录认证系统
+- ✨ 新增账号管理页面（管理员可添加/删除用户）
+- ✨ 支持通过环境变量配置初始管理员
+- 🐛 修复若干已知问题
+
+### v2026.06.17
+- 🎉 初始开源版本
+
+---
+
+## 技术栈
+
+- **后端**：Python / FastAPI / Uvicorn
+- **前端**：原生 HTML/CSS/JS / Tailwind CSS / Three.js
+- **存储**：JSON 文件（无数据库依赖）
+- **认证**：JWT / bcrypt / HTTP-only Cookie
+
+---
+
+## 许可协议
+
+已经申请著作权，禁止商业用途。
 
 Commercial use is prohibited.
 
+- 可以自己使用和公司使用，禁止用于任何形式的修改封装成商业产品，商用须取得授权
+- 根据代码二次开发的软件必须保持开源并注明来源作者
+- This software is for personal and company use only. Commercial use requires authorization
+- Software developed based on this code must remain open source and the original author must be credited
 
-* 可以自己使用和公司使用，禁止用于任何形式的修改封装成商业产品，商用须取得授权。
+---
 
-* 根据代码二次开发的软件必须保持开源并注明来源作者
+## 联系方式
 
-* This software is for personal and company use only, but is prohibited from being modified or packaged into commercial products in any way. Commercial use requires authorization.
-
-* Software developed based on this code must remain open source and the original author must be credited.
-
---------
-
-
-<img width="2079" height="665" alt="image" src="https://github.com/user-attachments/assets/8469923b-f7a2-403c-9c37-e6e789211f28" />
-
-<img width="1865" height="1503" alt="image" src="https://github.com/user-attachments/assets/f4030201-67c6-4845-b08b-b6fdf304afaa" />
-
-
-<img width="1696" height="1350" alt="b68e144c5b04a322bfd035da4d89aba3" src="https://github.com/user-attachments/assets/0a6090fb-a8dd-4c3d-adee-b1f9233a2d91" />
-
-   
-<img width="1525" height="1473" alt="image" src="https://github.com/user-attachments/assets/6f61fcf9-746c-425b-9e36-cfc8d252da7c" />
-
-   <img width="1261" height="864" alt="image" src="https://github.com/user-attachments/assets/57f3e230-3134-488f-8179-d97e7d15383a" />
-<img width="1530" height="858" alt="image" src="https://github.com/user-attachments/assets/9990e42d-22d5-4a10-a1e1-ad35a634edd2" />
-
-<img width="1735" height="1400" alt="image" src="https://github.com/user-attachments/assets/d8328ff8-bbe0-4f1c-9ffa-7b56e8a1a51d" />
-<img width="2258" height="969" alt="image" src="https://github.com/user-attachments/assets/4a752d99-885d-4ba9-8b86-91b495786b5c" />
-
-
-<img width="1531" height="1374" alt="image" src="https://github.com/user-attachments/assets/0af79e38-0955-4740-9e65-5c9bb057f58c" />
-
-<img width="2196" height="1040" alt="image" src="https://github.com/user-attachments/assets/6d823668-cde2-4836-8332-1858efe5f520" />
-<img width="2214" height="771" alt="image" src="https://github.com/user-attachments/assets/52e10958-753f-45ba-a50e-3bbec27be436" />
+- B站：https://space.bilibili.com/78652351
+- GitHub：https://github.com/yufan-byte/newCanva
